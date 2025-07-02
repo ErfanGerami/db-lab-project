@@ -1,0 +1,76 @@
+version: '3.9'
+
+volumes:
+  postgres-db-database2:
+
+
+services:
+
+  postgres:
+    image: postgres:16
+    container_name: postgresdb_database
+    expose:
+      - 5432:5432
+    env_file:
+      - .env.database
+    volumes:
+      - postgres-db-database2:/var/lib/postgresql/data
+
+  backend:
+    build: ./Database
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - .env.backend
+    # ports:
+    #   - "5000:8001"
+    expose:
+      - 5000
+      - 5432
+    # ports:
+    #   - "5432:54321"
+    restart: always
+    container_name: databasebackend
+    # depends_on:
+    #   - postgres
+    volumes:
+      - ./Database:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: sh -c ' until pg_isready -h postgres -p 5432; do echo "Waiting for postgres..."; sleep 1; done;  gunicorn Database.wsgi:application --bind 0.0.0.0:5000 --access-logfile - --error-logfile -'
+
+  redis:
+    image: redis:7.0
+    container_name: databaseredis
+    expose:
+      - 6379
+    # ports:
+    #   - "6391:6379"
+
+  celery:
+    image: celery:5.2
+    container_name: daatabasecelery
+    build: ./celery
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./Database/uploads:/app/shared/uploads
+      - ./Database/spec:/app/shared/spec
+
+    depends_on:
+      - redis
+    env_file:
+      - .env.celery
+    # ports:
+    #   - "5432:5432"
+
+    command: sh -c ' until pg_isready -h postgres -p 5432; do echo "Waiting for postgres..."; sleep 1; done; celery -A tasks worker --loglevel=info '
+  nginx:
+    build: ./frontend
+    container_name: database_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html
+      - ./Database/uploads:/usr/share/nginx/html/uploads
+    depends_on:
+      - backend

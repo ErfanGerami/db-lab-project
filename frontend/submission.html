@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Submissions</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100">
+    <!-- Navigation -->
+    <nav class="bg-blue-600 text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold">My Submissions</h1>
+            <div>
+                <a href="./index.html"
+                    class="bg-white text-blue-600 px-4 py-2 rounded hover:bg-blue-100 transition mr-2">
+                    Home
+                </a>
+                <button id="logout-btn" class="bg-white text-blue-600 px-4 py-2 rounded hover:bg-blue-100 transition">
+                    Logout
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mx-auto p-4">
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Submission History</h2>
+
+            <!-- Filter Options -->
+            <div class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Problem</label>
+                    <select id="problem-filter" class="w-full p-2 border rounded">
+                        <option value="">All Problems</option>
+                        <!-- Will be populated dynamically -->
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select id="status-filter" class="w-full p-2 border rounded">
+                        <option value="">All Statuses</option>
+                        <option value="true">Accepted</option>
+                        <option value="false">Rejected</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button id="apply-filters"
+                        class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition">
+                        Apply Filters
+                    </button>
+                </div>
+            </div>
+
+            <!-- Submissions Table -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Problem
+                            </th>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Status
+                            </th>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                File
+                            </th>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="submissions-container" class="bg-white divide-y divide-gray-200">
+                        <tr>
+                            <td colspan="4" class="px-6 py-4 text-center text-gray-500">
+                                Loading submissions...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let allSubmissions = [];
+        let allProblems = [];
+        const HOST = "http://localhost/api";        // Check authentication
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = "./login.html";
+            }
+        }
+
+        // Fetch with token
+        async function fetchWithToken(url, options = {}) {
+            const token = localStorage.getItem('token');
+            if (token) {
+                options.headers = {
+                    ...options.headers,
+                    'Authorization': `Bearer ${token}`
+                };
+            }
+            const response = await fetch(url, options);
+            if (!response.ok) {
+                if (response.status === 401) {
+                    localStorage.removeItem('token');
+                    window.location.href = "./login.html";
+                }
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response;
+        }
+
+        // Fetch submissions
+        async function fetchSubmissions() {
+            try {
+                const response = await fetchWithToken(`${HOST}/get-submissions/`);
+                const data = await response.json();
+                return Array.isArray(data) ? data : [data];
+            } catch (error) {
+                console.error('Error fetching submissions:', error);
+                throw error;
+            }
+        }
+
+        // Fetch problems for filter
+        async function fetchProblems() {
+            try {
+                const response = await fetchWithToken(`${HOST}/problems/`);
+                const data = await response.json();
+                return Array.isArray(data) ? data : [data];
+            } catch (error) {
+                console.error('Error fetching problems:', error);
+                return [];
+            }
+        }
+
+        // Display submissions
+        function displaySubmissions(submissions) {
+            const container = document.getElementById('submissions-container');
+            container.innerHTML = '';
+
+            if (submissions.length === 0) {
+                container.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="px-6 py-4 text-center text-gray-500">
+                            No submissions found matching your filters.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            submissions.forEach(submission => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+
+                const statusClass = submission.accepted ?
+                    'text-green-800 bg-green-100' :
+                    'text-red-800 bg-red-100';
+
+                const statusText = submission.accepted ?
+                    'Accepted' :
+                    'Rejected';
+
+                const fileName = submission.path.split('/').pop();
+
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium text-gray-900">
+                            <a href="./problem.html?problem_id=${submission.problem_id}" class="text-blue-600 hover:text-blue-800">
+                                ${submission.problem_name}
+                            </a>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full ${statusClass}">
+                            ${submission.status}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${fileName}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <a href="${HOST}/${submission.path}" download="${fileName}" class="text-blue-600 hover:text-blue-900 mr-3">Download</a>
+                    </td>
+                `;
+
+                container.appendChild(row);
+            });
+        }
+
+        // Populate problem filter
+        function populateProblemFilter(problems) {
+            const filter = document.getElementById('problem-filter');
+            const uniqueProblems = [...new Set(problems.map(p => p.name))];
+
+            uniqueProblems.forEach(problem => {
+                const option = document.createElement('option');
+                option.value = problem;
+                option.textContent = problem;
+                filter.appendChild(option);
+            });
+        }
+
+        // Filter submissions
+        function filterSubmissions() {
+            const problemFilter = document.getElementById('problem-filter').value;
+            const statusFilter = document.getElementById('status-filter').value;
+
+            let filtered = allSubmissions;
+
+            if (problemFilter) {
+                filtered = filtered.filter(s => s.problem_name === problemFilter);
+            }
+
+            if (statusFilter) {
+                filtered = filtered.filter(s => s.accepted.toString() === statusFilter);
+            }
+
+            displaySubmissions(filtered);
+        }
+
+        // View code (placeholder - you can implement this)
+        function viewCode(codeId) {
+            alert(`Viewing code with ID: ${codeId}`);
+            // You can implement a modal or new page to view the full code
+        }
+
+        // Logout function
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = "./login.html";
+        }
+
+        // Initialize the page
+        async function initialize() {
+            checkAuth();
+
+            // Setup event listeners
+            document.getElementById('logout-btn').addEventListener('click', logout);
+            document.getElementById('apply-filters').addEventListener('click', filterSubmissions);
+
+            // Load data
+            try {
+                [allSubmissions, allProblems] = await Promise.all([
+                    fetchSubmissions(),
+                    fetchProblems()
+                ]);
+
+                displaySubmissions(allSubmissions);
+                populateProblemFilter(allProblems);
+            } catch (error) {
+                document.getElementById('submissions-container').innerHTML = `
+                    <tr>
+                        <td colspan="4" class="px-6 py-4 text-center text-red-500">
+                            Error loading submissions: ${error.message}
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        // Start the application
+        initialize();
+    </script>
+</body>
+
+</html>

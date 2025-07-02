@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Problem View</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        .markdown-rendered h1 {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin: 1em 0;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 0.3em;
+        }
+
+        .markdown-rendered h2 {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin: 1em 0;
+        }
+
+        .markdown-rendered h3 {
+            font-size: 1.1em;
+            font-weight: bold;
+            margin: 1em 0;
+        }
+
+        .markdown-rendered pre {
+            background-color: #f7fafc;
+            padding: 1em;
+            border-radius: 0.5em;
+            overflow-x: auto;
+            margin: 1em 0;
+        }
+
+        .markdown-rendered code {
+            font-family: monospace;
+            background-color: #f7fafc;
+            padding: 0.2em 0.4em;
+            border-radius: 0.3em;
+        }
+
+        .markdown-rendered p {
+            margin: 1em 0;
+        }
+
+        .markdown-rendered ul,
+        .markdown-rendered ol {
+            margin: 1em 0;
+            padding-left: 2em;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100">
+    <!-- Navigation with Login -->
+    <nav class="bg-blue-600 text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold">CodeProblems</h1>
+            <button id="logout-btn" class="bg-white text-blue-600 px-4 py-2 rounded hover:bg-blue-100 transition">
+                Logout
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mx-auto p-4">
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <!-- Problem Title and Metadata -->
+            <div class="flex justify-between items-start mb-6">
+                <div>
+                    <h1 id="problem-title" class="text-2xl font-bold mb-2">Loading problem...</h1>
+                    <div id="problem-rating" class="text-gray-600"></div>
+                </div>
+                <div id="difficulty-badge" class="px-3 py-1 rounded-full text-sm font-medium"></div>
+            </div>
+
+            <!-- Problem Content -->
+            <div id="problem-content" class="markdown-rendered mb-8 border-b pb-8">
+                Loading problem content...
+            </div>
+
+            <!-- Submission Form -->
+            <div class="mt-8 border-t pt-6">
+                <h2 class="text-xl font-semibold mb-4">Submit Solution</h2>
+                <form id="submission-form" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Solution File</label>
+                        <input type="file" id="solution-file" name="solution" class="block w-full text-sm text-gray-500
+                                      file:mr-4 file:py-2 file:px-4
+                                      file:rounded file:border-0
+                                      file:text-sm file:font-semibold
+                                      file:bg-blue-50 file:text-blue-700
+                                      hover:file:bg-blue-100" required>
+                    </div>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+                        Submit Solution
+                    </button>
+                    <div id="submission-status" class="text-sm mt-2"></div>
+                </form>
+            </div>
+            <br>
+            <br>
+            <!-- Tutorial Section -->
+            <div id="tutorial-section" class="hidden mt-8">
+                <button id="show-tutorial-btn"
+                    class="mb-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+                    Show Tutorial
+                </button>
+                <div id="tutorial-content-container" class="hidden bg-gray-50 p-4 rounded-lg">
+                    <div id="tutorial-content" class="markdown-rendered">
+                        Tutorial content will load here...
+                    </div>
+                    <div id="tutorial-file-container" class="mt-4 hidden">
+                        <a id="tutorial-file-link" href="#"
+                            class="inline-flex items-center text-blue-600 hover:text-blue-800">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20"
+                                fill="currentColor">
+                                <path fill-rule="evenodd"
+                                    d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            Download Tutorial File
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const HOST = "http://localhost/api";        // Configure marked.js for proper markdown rendering
+        marked.setOptions({
+            gfm: true,
+            breaks: true,
+            sanitize: false
+        });
+
+        // Check authentication
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = "./login.html";
+            }
+        }
+
+        // Fetch with token
+        async function fetchWithToken(url, options = {}) {
+            const token = localStorage.getItem('token');
+            if (token) {
+                options.headers = {
+                    ...options.headers,
+                    'Authorization': `Bearer ${token}`
+                };
+            }
+            const response = await fetch(url, options);
+            if (!response.ok) {
+                if (response.status === 401) {
+                    localStorage.removeItem('token');
+                    window.location.href = "./login.html";
+                }
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response;
+        }
+
+        // Get URL parameter
+        function getUrlParameter(name) {
+            name = name.replace(/[[]/, '\\[').replace(/[\]]/, '\\]');
+            const regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            const results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        }
+
+        // Fetch problem details
+        async function fetchProblemDetails(problemId) {
+            try {
+                const response = await fetchWithToken(`${HOST}/problem/${problemId}/`);
+                const data = await response.json();
+                return data.problem;
+            } catch (error) {
+                console.error('Error fetching problem:', error);
+                throw error;
+            }
+        }
+
+        // Fetch tutorial details
+        async function fetchTutorialDetails(problemId) {
+            try {
+                const response = await fetchWithToken(`${HOST}/toturial/${problemId}/`);
+                const data = await response.json();
+                return data.problem;
+            } catch (error) {
+                console.error('Error fetching tutorial:', error);
+                throw error;
+            }
+        }
+
+        // Handle form submission
+        async function handleSubmission(event) {
+            event.preventDefault();
+            const statusElement = document.getElementById('submission-status');
+            statusElement.textContent = 'Submitting...';
+            statusElement.className = 'text-sm mt-2 text-blue-600';
+
+            const problemId = getUrlParameter('problem_id');
+            const fileInput = document.getElementById('solution-file');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                statusElement.textContent = 'Please select a file';
+                statusElement.className = 'text-sm mt-2 text-red-600';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('problem_id', problemId);
+            formData.append('file', file);
+
+            try {
+                const response = await fetchWithToken(`${HOST}/submit/`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error('Submission failed');
+
+                const result = await response.json();
+                statusElement.textContent = 'Submission successful!';
+                statusElement.className = 'text-sm mt-2 text-green-600';
+                fileInput.value = ''; // Clear the file input
+            } catch (error) {
+                console.error('Submission error:', error);
+                statusElement.textContent = `Submission failed: ${error.message}`;
+                statusElement.className = 'text-sm mt-2 text-red-600';
+            }
+        }
+
+        // Display problem details
+        async function displayProblemDetails(problem) {
+            // Set title
+            document.getElementById('problem-title').textContent = problem.name;
+
+            // Set rating
+            document.getElementById('problem-rating').textContent = `Rating: ${problem.rating}`;
+            document.getElementById('problem-content').innerHTML = marked.parse(problem.text || "No problem description available.");
+
+            // Handle tutorial
+            if (problem.can_access_toturial) {
+                const tutorialSection = document.getElementById('tutorial-section');
+                tutorialSection.classList.remove('hidden');
+
+                document.getElementById('show-tutorial-btn').addEventListener('click', async function () {
+                    const container = document.getElementById('tutorial-content-container');
+                    if (container.classList.contains('hidden')) {
+                        try {
+                            const tutorial = await fetchTutorialDetails(problem.problem_id);
+                            document.getElementById('tutorial-content').innerHTML = marked.parse(tutorial.text || "No tutorial available.");
+
+                            // Handle tutorial file if available
+                            const fileContainer = document.getElementById('tutorial-file-container');
+                            const fileLink = document.getElementById('tutorial-file-link');
+
+                            if (tutorial.file) {
+                                fileContainer.classList.remove('hidden');
+                                fileLink.href = `${HOST}/${tutorial.file}`;
+                                fileLink.download = tutorial.file.split('/').pop();
+                            } else {
+                                fileContainer.classList.add('hidden');
+                            }
+
+                            this.textContent = 'Hide Tutorial';
+                        } catch (error) {
+                            document.getElementById('tutorial-content').innerHTML = `Error loading tutorial: ${error.message}`;
+                        }
+                    } else {
+                        this.textContent = 'Show Tutorial';
+                    }
+                    container.classList.toggle('hidden');
+                });
+            }
+        }
+
+        // Logout function
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = "./login.html";
+        }
+
+        // Initialize the page
+        async function initialize() {
+            checkAuth();
+            document.getElementById('logout-btn').addEventListener('click', logout);
+
+            const problemId = getUrlParameter('problem_id');
+            if (!problemId) {
+                alert('No problem ID specified in URL');
+                window.location.href = "./index.html";
+                return;
+            }
+
+            try {
+                const problem = await fetchProblemDetails(problemId);
+                await displayProblemDetails(problem);
+
+                // Setup form submission handler
+                document.getElementById('submission-form').addEventListener('submit', handleSubmission);
+            } catch (error) {
+                document.getElementById('problem-content').innerHTML = `
+                    <div class="text-red-500">
+                        Error loading problem: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Start the application
+        initialize();
+    </script>
+</body>
+
+</html>

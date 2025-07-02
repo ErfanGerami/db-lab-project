@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Problems</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        #create-contest-modal {
+            z-index: 1000;
+            /* Add this to ensure modal appears above everything */
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100">
+    <!-- Create Contest Modal -->
+    <div id="create-contest-modal"
+        class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <h2 class="text-xl font-semibold mb-4">Create New Contest</h2>
+            <form id="contest-form">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="contest-name">
+                        Contest Name
+                    </label>
+                    <input id="contest-name" type="text" required
+                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="start-time">
+                        Start Time
+                    </label>
+                    <input id="start-time" type="datetime-local" required
+                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="end-time">
+                        End Time
+                    </label>
+                    <input id="end-time" type="datetime-local" required
+                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                </div>
+                <div class="flex justify-end">
+                    <button type="button" id="cancel-contest-btn"
+                        class="bg-gray-500 text-white px-4 py-2 rounded mr-2 hover:bg-gray-600 transition">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+                        Create Contest
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Rest of your HTML remains exactly the same -->
+    <!-- Navigation with Login -->
+    <nav class="bg-blue-600 text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold">CodeProblems</h1>
+            <div class="flex space-x-4">
+                <a href="./submissions.html"
+                    class="bg-white text-blue-600 px-4 py-2 rounded hover:bg-blue-100 transition mr-2">
+                    Submissions
+                </a>
+                <button id="create-contest-btn"
+                    class="bg-white text-blue-600 px-4 py-2 rounded hover:bg-blue-100 transition">
+                    Create Contest
+                </button>
+                <button id="logout-btn" class="bg-white text-blue-600 px-4 py-2 rounded hover:bg-blue-100 transition">
+                    Logout
+                </button>
+
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mx-auto p-4">
+        <!-- Contests Section -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold">Current Contests</h2>
+            </div>
+            <div id="contests-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="col-span-3 text-center p-4 text-gray-500">
+                    Loading contests...
+                </div>
+            </div>
+        </div>
+
+        <!-- Problems Section -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-lg font-semibold mb-4">Filter Problems</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Rating Filter -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Rating Range</label>
+                    <div class="flex items-center space-x-2">
+                        <input type="number" id="min-rating" placeholder="Min" class="w-full p-2 border rounded">
+                        <span>to</span>
+                        <input type="number" id="max-rating" placeholder="Max" class="w-full p-2 border rounded">
+                    </div>
+                </div>
+
+                <!-- Tags Filter -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+                    <select id="tag-filter" class="w-full p-2 border rounded">
+                        <option value="">All Tags</option>
+                        <!-- Tags will be loaded dynamically -->
+                    </select>
+                </div>
+
+                <!-- Apply Button -->
+                <div class="flex items-end">
+                    <button id="apply-filters"
+                        class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition">
+                        Apply Filters
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Problems List -->
+        <div id="problems-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="col-span-3 text-center p-4 text-gray-500">
+                Loading problems...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let allProblems = [];
+        let allTags = [];
+        let allContests = [];
+        const HOST = "http://localhost/api";
+
+        // Check authentication
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = "./login.html";
+            }
+        }
+
+        // Fetch with token
+        async function fetchWithToken(url, options = {}) {
+            const token = localStorage.getItem('token');
+            if (token) {
+                options.headers = {
+                    ...options.headers,
+                    'Authorization': `Bearer ${token}`
+                };
+            }
+            const response = await fetch(url, options);
+            if (!response.ok) {
+                if (response.status === 401) {
+                    localStorage.removeItem('token');
+                    window.location.href = "./login.html";
+                }
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response;
+        }
+
+        // Fetch contests
+        async function fetchContests() {
+            try {
+                const response = await fetchWithToken(`${HOST}/contests/`);
+                const data = await response.json();
+                allContests = Array.isArray(data) ? data : [data];
+                displayContests();
+            } catch (error) {
+                console.error('Error fetching contests:', error);
+                document.getElementById('contests-container').innerHTML = `
+                    <div class="col-span-3 text-center p-4 text-red-500">
+                        Error loading contests: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Display contests
+        function displayContests() {
+            const container = document.getElementById('contests-container');
+            container.innerHTML = '';
+
+            if (allContests.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-3 text-center p-4 text-gray-500">
+                        No contests available.
+                    </div>
+                `;
+                return;
+            }
+
+            allContests.forEach(contest => {
+                const startTime = new Date(contest.start_time);
+                const endTime = new Date(contest.end_time);
+                const now = new Date();
+                const status = contest.status;
+
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-lg shadow overflow-hidden border border-gray-200';
+
+                // Admin badge if user is admin
+                const adminBadge = contest.is_admin ?
+                    `<span class="absolute top-2 right-2 bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-0.5 rounded">Admin</span>` :
+                    '';
+
+                card.innerHTML = `
+                    ${contest.is_admin ? `<a href='./contestadmin.html?contest_id=${contest.contest_id}' class='block relative'>${adminBadge}` :
+                        (status === "ongoing" ? `<a href='./contest.html?contest_id=${contest.contest_id}' class='block'>` : `<div class='block'>`)}
+
+                    <div class="p-4">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-semibold text-lg">${contest.name}</h3>
+                            <span class="px-2 py-1 text-xs rounded-full">
+                                ${status}
+                            </span>
+                        </div>
+                        <p class="text-gray-600 text-sm mb-2">
+                            <strong>Starts:</strong> ${startTime.toLocaleString()}
+                        </p>
+                        <p class="text-gray-600 text-sm mb-3">
+                            <strong>Ends:</strong> ${endTime.toLocaleString()}
+                        </p>
+                        <div class="flex justify-end">
+                            <button id="enroll-btn-${contest.contest_id}" 
+                                class="px-4 py-2 rounded text-sm font-medium ${contest.enrolled
+                        ? 'bg-gray-300 text-gray-700 cursor-default'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                    } transition">
+                                ${contest.enrolled ? 'Enrolled' : 'Enroll Now'}
+                            </button>
+                        </div>
+                    </div>
+                    ${contest.is_admin ? '</a>' : (status === "started" ? '</a>' : '</div>')}
+                `;
+                container.appendChild(card);
+
+                if (!contest.enrolled) {
+                    const enrollBtn = document.getElementById(`enroll-btn-${contest.contest_id}`);
+                    enrollBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        enrollInContest(contest.contest_id);
+                    });
+                }
+            });
+        }
+
+        // Create new contest
+        async function createContest(contestData) {
+            try {
+                const response = await fetchWithToken(`${HOST}/create-contest/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(contestData)
+                });
+
+                if (!response.ok) throw new Error('Contest creation failed');
+
+                const data = await response.json();
+                window.location.href = `./contestadmin.html?contest_id=${data.contest_id}`;
+            } catch (error) {
+                console.error('Error creating contest:', error);
+                alert(`Contest creation failed: ${error.message}`);
+            }
+        }
+
+        // Enroll in contest
+        async function enrollInContest(contestId) {
+            try {
+                const response = await fetchWithToken(`${HOST}/enroll/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ contest_id: contestId })
+
+                });
+
+                if (!response.ok) {
+                    console.log(response);
+                    throw new Error('Enrollment failed');
+                }
+
+                // Refresh contests after successful enrollment
+                await fetchContests();
+                alert('Successfully enrolled in contest!');
+            } catch (error) {
+                console.error('Error enrolling:', error);
+                alert(`Enrollment failed: ${error.message}`);
+            }
+        }
+
+        // Fetch tags from API
+        async function fetchTags() {
+            try {
+                const response = await fetchWithToken(`${HOST}/tags/`);
+                const data = await response.json();
+                allTags = Array.isArray(data) ? data : [data];
+                populateTagFilter();
+            } catch (error) {
+                console.error('Error fetching tags:', error);
+            }
+        }
+
+        // Populate the tag dropdown
+        function populateTagFilter() {
+            const tagFilter = document.getElementById('tag-filter');
+            while (tagFilter.options.length > 1) {
+                tagFilter.remove(1);
+            }
+
+            allTags.forEach(tag => {
+                const option = document.createElement('option');
+                option.value = tag.name;
+                option.textContent = tag.name;
+                tagFilter.appendChild(option);
+            });
+        }
+
+        // Build API URL with query parameters
+        function buildApiUrl() {
+            const minRating = document.getElementById('min-rating').value;
+            const maxRating = document.getElementById('max-rating').value;
+            const selectedTag = document.getElementById('tag-filter').value;
+
+            let url = `${HOST}/problems/?`;
+            const params = [];
+
+            if (minRating) params.push(`rating_from=${minRating}`);
+            if (maxRating) params.push(`rating_to=${maxRating}`);
+            if (selectedTag) params.push(`tags=${selectedTag}`);
+
+            return url + params.join('&');
+        }
+
+        // Fetch problems from API with filters
+        async function fetchProblems() {
+            try {
+                const url = buildApiUrl();
+                const response = await fetchWithToken(url);
+                const data = await response.json();
+                displayProblems(Array.isArray(data) ? data : [data]);
+            } catch (error) {
+                console.error('Error fetching problems:', error);
+                document.getElementById('problems-container').innerHTML = `
+                    <div class="col-span-3 text-center p-4 text-red-500">
+                        Error loading problems: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Display problems in the UI
+        function displayProblems(problems) {
+            const container = document.getElementById('problems-container');
+            container.innerHTML = '';
+
+            if (problems.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-3 text-center p-4 text-gray-500">
+                        No problems match your filters.
+                    </div>
+                `;
+                return;
+            }
+
+            problems.forEach(problem => {
+                const difficulty = Math.min(10, Math.max(1, Math.floor(problem.rating / 100)));
+                let difficultyColor = 'green';
+                if (difficulty > 7) difficultyColor = 'red';
+                else if (difficulty > 4) difficultyColor = 'yellow';
+
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-lg shadow overflow-hidden hover:shadow-md transition';
+                card.innerHTML = `
+                    <a href="./problem.html?problem_id=${problem.problem_id}" class="block">
+                        <div class="p-4">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-semibold text-lg">${problem.name}</h3>
+                            
+                        </div>
+                        <p class="text-gray-600 text-sm mb-3">Rating: ${problem.rating}</p>
+                        <div class="flex flex-wrap gap-1">
+                            ${problem.tags ? problem.tags.map(tag => `
+                                <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                                    ${tag}
+                                </span>
+                            `).join('') : ''}
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-4 py-2 flex justify-end">
+                        <button class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                            View Problem →
+                        </button>
+                    </div>
+                    </a>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // Logout function
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = "./login.html";
+        }
+
+        // Initialize the page
+        async function initialize() {
+            checkAuth();
+
+            // Setup event listeners
+            document.getElementById('logout-btn').addEventListener('click', logout);
+            document.getElementById('apply-filters').addEventListener('click', fetchProblems);
+
+            // Contest creation modal handlers
+            const modal = document.getElementById('create-contest-modal');
+            document.getElementById('create-contest-btn').addEventListener('click', () => {
+                modal.classList.remove('hidden');
+            });
+
+            document.getElementById('cancel-contest-btn').addEventListener('click', () => {
+                modal.classList.add('hidden');
+            });
+
+            document.getElementById('contest-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const name = document.getElementById('contest-name').value;
+                const startTime = document.getElementById('start-time').value;
+                const endTime = document.getElementById('end-time').value;
+
+                createContest({
+                    name,
+                    start_time: startTime,
+                    end_time: endTime
+                });
+            });
+
+            // Load initial data
+            await fetchContests();
+            await fetchTags();
+            await fetchProblems();
+        }
+
+        // Start the application
+        initialize();
+    </script>
+</body>
+
+</html>

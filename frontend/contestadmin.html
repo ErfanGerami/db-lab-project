@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contest Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for better modal display */
+        #add-problem-modal {
+            align-items: flex-start;
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+        }
+
+        .modal-content {
+            max-height: 90vh;
+            overflow-y: auto;
+            width: 90%;
+            max-width: 800px;
+        }
+
+        .test-case-section {
+            border: 1px solid #e2e8f0;
+            border-radius: 0.375rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background-color: #f8fafc;
+        }
+
+        .test-case-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100">
+    <!-- Navigation -->
+    <nav class="bg-blue-600 text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold">Contest Admin</h1>
+            <button id="logout-btn" class="bg-white text-blue-600 px-4 py-2 rounded hover:bg-blue-100 transition">
+                Logout
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mx-auto p-4">
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <!-- Contest Info -->
+            <div id="contest-info" class="mb-8">
+                <h1 id="contest-name" class="text-2xl font-bold mb-2">Loading contest...</h1>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <p class="text-gray-600"><strong>Start Time:</strong> <span id="start-time">Loading...</span>
+                        </p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600"><strong>End Time:</strong> <span id="end-time">Loading...</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Problem Modal -->
+            <div id="add-problem-modal"
+                class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden">
+                <div class="modal-content bg-white rounded-lg shadow-xl p-6">
+                    <h2 class="text-xl font-semibold mb-4">Add Problem</h2>
+                    <form id="problem-form">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="problem-name">
+                                    Problem Name
+                                </label>
+                                <input id="problem-name" type="text" required
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="problem-rating">
+                                    Rating
+                                </label>
+                                <input id="problem-rating" type="number" required
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="problem-text">
+                                Problem Text (Markdown)
+                            </label>
+                            <textarea id="problem-text" rows="6" required
+                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"></textarea>
+                        </div>
+                        <div class="mb-4">
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" id="problem-public" class="form-checkbox h-5 w-5 text-blue-600">
+                                <span class="ml-2 text-gray-700">Public</span>
+                            </label>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">
+                                Tags
+                            </label>
+                            <div id="tags-container" class="flex flex-wrap gap-2 mb-2">
+                                <!-- Tags will be loaded here -->
+                            </div>
+                            <select id="tag-select" multiple
+                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                <!-- Tag options will be loaded here -->
+                            </select>
+                        </div>
+
+                        <!-- Test Cases Section -->
+                        <div class="mb-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <h3 class="text-lg font-semibold">Test Cases</h3>
+                                <button type="button" id="add-test-case-btn"
+                                    class="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 transition">
+                                    Add Test Case
+                                </button>
+                            </div>
+                            <div id="test-cases-container">
+                                <!-- Test cases will be added here -->
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <h3 class="text-lg font-semibold mb-2">Tutorial</h3>
+                            <div class="mb-2">
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="tutorial-text">
+                                    Tutorial Text (Markdown)
+                                </label>
+                                <textarea id="tutorial-text" rows="4"
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="tutorial-file">
+                                    Tutorial File (Optional)
+                                </label>
+                                <input type="file" id="tutorial-file" class="block w-full text-sm text-gray-500
+                                           file:mr-4 file:py-2 file:px-4
+                                           file:rounded file:border-0
+                                           file:text-sm file:font-semibold
+                                           file:bg-blue-50 file:text-blue-700
+                                           hover:file:bg-blue-100">
+                            </div>
+                        </div>
+                        <div class="flex justify-end">
+                            <button type="button" id="cancel-problem-btn"
+                                class="bg-gray-500 text-white px-4 py-2 rounded mr-2 hover:bg-gray-600 transition">
+                                Cancel
+                            </button>
+                            <button type="submit"
+                                class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+                                Add Problem
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Add Admin Modal -->
+            <div id="add-admin-modal"
+                class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden">
+                <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+                    <h2 class="text-xl font-semibold mb-4">Add Admin</h2>
+                    <form id="admin-form">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="admin-username">
+                                Username
+                            </label>
+                            <input id="admin-username" type="text" required
+                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        </div>
+                        <div class="flex justify-end">
+                            <button type="button" id="cancel-admin-btn"
+                                class="bg-gray-500 text-white px-4 py-2 rounded mr-2 hover:bg-gray-600 transition">
+                                Cancel
+                            </button>
+                            <button type="submit"
+                                class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+                                Add Admin
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Problems Section -->
+            <div class="mb-8">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Problems</h2>
+                    <button id="add-problem-btn"
+                        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+                        Add Problem
+                    </button>
+                </div>
+                <div id="problems-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="col-span-3 text-center p-4 text-gray-500">
+                        Loading problems...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admins Section -->
+            <div>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Admins</h2>
+                    <button id="add-admin-btn"
+                        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+                        Add Admin
+                    </button>
+                </div>
+                <div id="admins-container" class="bg-gray-50 p-4 rounded-lg">
+                    Loading admins...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let contestId;
+        let allTags = [];
+        let testCaseCounter = 0;
+        const HOST = "http://localhost/api"; // Replace with your API host
+
+        // Check authentication
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = "./login.html";
+            }
+        }
+
+        // Fetch with token
+        async function fetchWithToken(url, options = {}) {
+            const token = localStorage.getItem('token');
+            if (token) {
+                options.headers = {
+                    ...options.headers,
+                    'Authorization': `Bearer ${token}`
+                };
+            }
+            const response = await fetch(url, options);
+            if (!response.ok) {
+                if (response.status === 401) {
+                    localStorage.removeItem('token');
+                    window.location.href = "./login.html";
+                }
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response;
+        }
+
+        // Get URL parameter
+        function getUrlParameter(name) {
+            name = name.replace(/[[]/, '\\[').replace(/[\]]/, '\\]');
+            const regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            const results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        }
+
+        // Fetch contest details
+        async function fetchContestDetails() {
+            try {
+                const response = await fetchWithToken(`${HOST}/contest/${contestId}/`);
+                const data = await response.json();
+                return data.contest;
+            } catch (error) {
+                console.error('Error fetching contest:', error);
+                throw error;
+            }
+        }
+
+        // Fetch admins
+        async function fetchAdmins() {
+            try {
+                const response = await fetchWithToken(`${HOST}/get-admins/${contestId}/`);
+                const data = await response.json();
+                return data.admins;
+            } catch (error) {
+                console.error('Error fetching admins:', error);
+                throw error;
+            }
+        }
+
+        // Display admins
+        function displayAdmins(admins) {
+            const container = document.getElementById('admins-container');
+
+            const list = document.createElement('div');
+            list.className = 'space-y-2';
+
+            admins.forEach(admin => {
+                const adminElement = document.createElement('div');
+                adminElement.className = 'flex justify-between items-center';
+                adminElement.innerHTML = `
+                    <span class="font-medium">${admin}</span>
+                `;
+                list.appendChild(adminElement);
+            });
+
+            container.innerHTML = '';
+            container.appendChild(list);
+        }
+
+        // Fetch tags
+        async function fetchTags() {
+            try {
+                const response = await fetchWithToken(`${HOST}/tags/`);
+                const data = await response.json();
+                allTags = Array.isArray(data) ? data : [data];
+                populateTagSelect();
+            } catch (error) {
+                console.error('Error fetching tags:', error);
+            }
+        }
+
+        // Populate tag select
+        function populateTagSelect() {
+            const tagSelect = document.getElementById('tag-select');
+            tagSelect.innerHTML = '';
+
+            allTags.forEach(tag => {
+                const option = document.createElement('option');
+                option.value = tag.name;
+                option.textContent = tag.name;
+                tagSelect.appendChild(option);
+            });
+        }
+
+        // Display contest info
+        async function displayContestInfo(contest) {
+            document.getElementById('contest-name').textContent = contest.name;
+            document.getElementById('start-time').textContent = new Date(contest.start_time).toLocaleString();
+            document.getElementById('end-time').textContent = new Date(contest.end_time).toLocaleString();
+
+            displayProblems(contest.problems || []);
+
+            // Load and display admins
+            try {
+                console.log(contest)
+                displayAdmins(contest.admins);
+            } catch (error) {
+                document.getElementById('admins-container').innerHTML = `
+                    <div class="text-red-500">
+                        Error loading admins: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Display problems
+        function displayProblems(problems) {
+            const container = document.getElementById('problems-container');
+            container.innerHTML = '';
+
+            if (problems.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-3 text-center p-4 text-gray-500">
+                        No problems added yet.
+                    </div>
+                `;
+                return;
+            }
+
+            problems.forEach(problem => {
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-lg shadow overflow-hidden border border-gray-200';
+                card.innerHTML = `
+                    <div class="p-4">
+                        <div class="flex justify-between items-start mb-2">
+                            <a href="./problem.html?problem_id=${problem.problem_id}" class="font-semibold text-lg hover:text-blue-600">
+                                ${problem.name}
+                            </a>
+                            <div class="flex items-center">
+                                <span class="text-xs px-2 py-1 rounded-full ${problem.public ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'} mr-2">
+                                    ${problem.public ? 'Public' : 'Private'}
+                                </span>
+                                <button data-problem-id="${problem.problem_id}" class="delete-problem-btn text-red-600 hover:text-red-800">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            // Add event listeners to delete buttons
+            document.querySelectorAll('.delete-problem-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const problemId = e.target.getAttribute('data-problem-id');
+                    deleteProblem(problemId);
+                });
+            });
+        }
+
+        // Add a test case section
+        function addTestCase() {
+            testCaseCounter++;
+            const container = document.getElementById('test-cases-container');
+            const testCaseDiv = document.createElement('div');
+            testCaseDiv.className = 'test-case-section';
+            testCaseDiv.innerHTML = `
+                <div class="test-case-header">
+                    <h4 class="font-medium">Test Case #${testCaseCounter}</h4>
+                    <button type="button" class="remove-test-case-btn text-red-500 hover:text-red-700 text-sm">
+                        Remove
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="test-case-input-${testCaseCounter}">
+                            Input File
+                        </label>
+                        <input type="file" id="test-case-input-${testCaseCounter}" 
+                            class="test-case-input block w-full text-sm text-gray-500
+                                   file:mr-4 file:py-2 file:px-4
+                                   file:rounded file:border-0
+                                   file:text-sm file:font-semibold
+                                   file:bg-blue-50 file:text-blue-700
+                                   hover:file:bg-blue-100" required>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="test-case-output-${testCaseCounter}">
+                            Output File
+                        </label>
+                        <input type="file" id="test-case-output-${testCaseCounter}" 
+                            class="test-case-output block w-full text-sm text-gray-500
+                                   file:mr-4 file:py-2 file:px-4
+                                   file:rounded file:border-0
+                                   file:text-sm file:font-semibold
+                                   file:bg-blue-50 file:text-blue-700
+                                   hover:file:bg-blue-100" required>
+                    </div>
+                </div>
+            `;
+            container.appendChild(testCaseDiv);
+
+            // Add event listener to remove button
+            testCaseDiv.querySelector('.remove-test-case-btn').addEventListener('click', () => {
+                container.removeChild(testCaseDiv);
+                // Renumber remaining test cases
+                const testCases = container.querySelectorAll('.test-case-section');
+                testCases.forEach((tc, index) => {
+                    tc.querySelector('h4').textContent = `Test Case #${index + 1}`;
+                });
+                testCaseCounter = testCases.length;
+            });
+        }
+
+        // Add problem with test cases and tutorial
+        async function addProblem(problemData) {
+            try {
+                const formData = new FormData();
+
+                // Add problem data
+                formData.append('name', problemData.name);
+                formData.append('text', problemData.text);
+                formData.append('rating', problemData.rating);
+                formData.append('public', problemData.public);
+                formData.append('contest_id', contestId);
+                formData.append('mode', 'create');
+
+                // Add tags as JSON
+                formData.append('tags', JSON.stringify(problemData.tags));
+
+                // Add test cases
+                const testCaseInputs = document.querySelectorAll('.test-case-input');
+                const testCaseOutputs = document.querySelectorAll('.test-case-output');
+
+                for (let i = 0; i < testCaseInputs.length; i++) {
+                    formData.append(`test_case_input_${i}`, testCaseInputs[i].files[0]);
+                    formData.append(`test_case_output_${i}`, testCaseOutputs[i].files[0]);
+                }
+
+                // Add tutorial text if provided
+                if (problemData.tutorialText) {
+                    formData.append('tutorial_text', problemData.tutorialText);
+                }
+
+                // Add tutorial file if provided
+                if (problemData.tutorialFile) {
+                    formData.append('tutorial_file', problemData.tutorialFile);
+                }
+
+                const response = await fetchWithToken(`${HOST}/create-delete-problem/`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error('Problem creation failed');
+
+                // Refresh contest details
+                const contest = await fetchContestDetails();
+                displayContestInfo(contest);
+
+                // Close modal and reset form
+                document.getElementById('add-problem-modal').classList.add('hidden');
+                document.getElementById('problem-form').reset();
+                document.getElementById('test-cases-container').innerHTML = '';
+                testCaseCounter = 0;
+                alert('Problem added successfully!');
+            } catch (error) {
+                console.error('Error adding problem:', error);
+                alert(`Problem creation failed: ${error.message}`);
+            }
+        }
+
+        // Delete problem
+        async function deleteProblem(problemId) {
+            if (!confirm('Are you sure you want to delete this problem?')) return;
+
+            try {
+                const response = await fetchWithToken(`${HOST}/create-delete-problem/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        problem_id: problemId,
+                        mode: 'delete'
+                    })
+                });
+
+                if (!response.ok) throw new Error('Problem deletion failed');
+
+                // Refresh contest details
+                const contest = await fetchContestDetails();
+                displayContestInfo(contest);
+                alert('Problem deleted successfully!');
+            } catch (error) {
+                console.error('Error deleting problem:', error);
+                alert(`Problem deletion failed: ${error.message}`);
+            }
+        }
+
+        // Add admin
+        async function addAdmin(username) {
+            try {
+                const response = await fetchWithToken(`${HOST}/add-admin/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contest_id: contestId,
+                        username: username
+                    })
+                });
+                console.log(response.json)
+                if (!response.ok) throw new Error(response.error || 'Failed qwdswqd');
+
+                // Close modal and reset form
+                document.getElementById('add-admin-modal').classList.add('hidden');
+                document.getElementById('admin-form').reset();
+
+                // Refresh admins list
+                const admins = await fetchAdmins();
+                displayAdmins(admins);
+                alert('Admin added successfully!');
+            } catch (error) {
+                console.error('Error adding admin:', error);
+                alert(`Failed to add admin: ${error}`);
+            }
+        }
+
+        // Logout function
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = "./login.html";
+        }
+
+        // Initialize the page
+        async function initialize() {
+            checkAuth();
+
+            // Get contest ID from URL
+            contestId = getUrlParameter('contest_id');
+            if (!contestId) {
+                alert('No contest ID specified in URL');
+                window.location.href = "./index.html";
+                return;
+            }
+
+            // Setup event listeners
+            document.getElementById('logout-btn').addEventListener('click', logout);
+
+            // Problem modal handlers
+            document.getElementById('add-problem-btn').addEventListener('click', () => {
+                document.getElementById('add-problem-modal').classList.remove('hidden');
+            });
+
+            document.getElementById('cancel-problem-btn').addEventListener('click', () => {
+                document.getElementById('add-problem-modal').classList.add('hidden');
+                document.getElementById('test-cases-container').innerHTML = '';
+                testCaseCounter = 0;
+            });
+
+            document.getElementById('add-test-case-btn').addEventListener('click', addTestCase);
+
+            document.getElementById('problem-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const name = document.getElementById('problem-name').value;
+                const text = document.getElementById('problem-text').value;
+                const rating = document.getElementById('problem-rating').value;
+                const isPublic = document.getElementById('problem-public').checked;
+                const tutorialText = document.getElementById('tutorial-text').value;
+                const tutorialFile = document.getElementById('tutorial-file').files[0];
+                const selectedTags = Array.from(document.getElementById('tag-select').selectedOptions)
+                    .map(option => option.value);
+
+                // Validate test cases
+                const testCaseInputs = document.querySelectorAll('.test-case-input');
+                if (testCaseInputs.length === 0) {
+                    alert('Please add at least one test case');
+                    return;
+                }
+
+                for (let i = 0; i < testCaseInputs.length; i++) {
+                    if (!testCaseInputs[i].files[0] || !document.querySelectorAll('.test-case-output')[i].files[0]) {
+                        alert(`Please select both input and output files for test case ${i + 1}`);
+                        return;
+                    }
+                }
+
+                addProblem({
+                    name,
+                    text,
+                    rating,
+                    public: isPublic,
+                    tags: selectedTags,
+                    tutorialText: tutorialText || null,
+                    tutorialFile: tutorialFile || null
+                });
+            });
+
+            // Admin modal handlers
+            document.getElementById('add-admin-btn').addEventListener('click', () => {
+                document.getElementById('add-admin-modal').classList.remove('hidden');
+            });
+
+            document.getElementById('cancel-admin-btn').addEventListener('click', () => {
+                document.getElementById('add-admin-modal').classList.add('hidden');
+            });
+
+            document.getElementById('admin-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const username = document.getElementById('admin-username').value;
+                addAdmin(username);
+            });
+
+            // Load initial data
+            await fetchTags();
+            const contest = await fetchContestDetails();
+            displayContestInfo(contest);
+        }
+
+        // Start the application
+        initialize();
+    </script>
+</body>
+
+</html>
