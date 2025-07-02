@@ -1,6 +1,11 @@
-it is my db lab project
-its a website for helding programming contests
-it is something like codeforcces or quera 
-when submiting a code it initiates a container to test that code and then compares the result to the expected result
-and tells if the code has been accepted or not 
-you can crete contests, add problems with test cases,attend a contest and ...
+## Programming Contest Platform
+
+- A Codeforces/Quera-like programming contest platform where users can:
+
+- Create and participate in coding contests
+
+- Submit solutions that are automatically tested in isolated containers
+
+- Get real-time verdicts (Accepted, Wrong Answer, Time Limit Exceeded, etc.)
+
+- Manage problems with test cases and expected outputs
